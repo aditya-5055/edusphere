@@ -15,8 +15,8 @@ dist
 dist-ssr
 
 # Env files (IMPORTANT)
-.env
-.env.*
+.env*
+!.env.example
 client/.env
 server/.env
 

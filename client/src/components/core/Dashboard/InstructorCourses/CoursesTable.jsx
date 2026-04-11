@@ -8,6 +8,7 @@ import { FaCheck } from "react-icons/fa"
 import { FiEdit2 } from "react-icons/fi"
 import { HiClock } from "react-icons/hi"
 import { RiDeleteBin6Line } from "react-icons/ri"
+import { MdLiveTv } from "react-icons/md"
 import { useNavigate } from "react-router-dom"
 
 import { formatDate } from "../../../../services/formatDate"
@@ -79,9 +80,13 @@ export default function CoursesTable({ courses, setCourses }) {
                     className="h-[148px] w-[220px] rounded-lg object-cover"
                   />
                   <div className="flex flex-col justify-between">
-                    <p className="text-lg font-semibold text-richblack-5">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/dashboard/course/${course._id}/manage`)}
+                      className="w-fit text-left text-lg font-semibold text-richblack-5 hover:text-yellow-25"
+                    >
                       {course.courseName}
-                    </p>
+                    </button>
                     <p className="text-xs text-richblack-300">
                       {course.courseDescription.split(" ").length >
                       TRUNCATE_LENGTH
@@ -95,17 +100,17 @@ export default function CoursesTable({ courses, setCourses }) {
                       Created: {formatDate(course.createdAt)}
                     </p>
                     {course.status === COURSE_STATUS.DRAFT ? (
-                      <p className="flex w-fit flex-row items-center gap-2 rounded-full bg-richblack-700 px-2 py-[2px] text-[12px] font-medium text-pink-100">
+                      <div className="flex w-fit flex-row items-center gap-2 rounded-full bg-richblack-700 px-2 py-[2px] text-[12px] font-medium text-pink-100">
                         <HiClock size={14} />
                         Drafted
-                      </p>
+                      </div>
                     ) : (
-                      <p className="flex w-fit flex-row items-center gap-2 rounded-full bg-richblack-700 px-2 py-[2px] text-[12px] font-medium text-yellow-100">
+                      <div className="flex w-fit flex-row items-center gap-2 rounded-full bg-richblack-700 px-2 py-[2px] text-[12px] font-medium text-yellow-100">
                         <div className="flex h-3 w-3 items-center justify-center rounded-full bg-yellow-100 text-richblack-700">
                           <FaCheck size={8} />
                         </div>
                         Published
-                      </p>
+                      </div>
                     )}
                   </div>
                 </Td>
@@ -116,6 +121,16 @@ export default function CoursesTable({ courses, setCourses }) {
                   ₹{course.price}
                 </Td>
                 <Td className="text-sm font-medium text-richblack-100 ">
+                  <button
+                    disabled={loading}
+                    onClick={() => {
+                      navigate(`/dashboard/course/${course._id}/manage`)
+                    }}
+                    title="Manage Live Classes"
+                    className="px-2 transition-all duration-200 hover:scale-110 hover:text-yellow-50"
+                  >
+                    <MdLiveTv size={20} />
+                  </button>
                   <button
                     disabled={loading}
                     onClick={() => {

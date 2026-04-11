@@ -177,7 +177,78 @@ exports.getEnrolledCourses = async (req, res) => {
         },
       })
       .exec()
+
+    if (!userDetails) {
+      return res.status(400).json({
+        success: false,
+        message: `Could not find user with id: ${userId}`,
+      })
+    }
+
     userDetails = userDetails.toObject()
+    const now = new Date()
+    const accessMap = new Map(
+      (userDetails.courseAccess || []).map((entry) => [
+        String(entry.course),
+        entry,
+      ])
+    )
+
+    const activeCourses = []
+    const expiredCourseIds = []
+    const missingAccessMetadataCourseIds = []
+
+    for (const course of userDetails.courses) {
+      const accessEntry = accessMap.get(String(course._id))
+      const hasValidAccess = accessEntry
+        ? !accessEntry.expiresAt || new Date(accessEntry.expiresAt) > now
+        : true
+
+      if (hasValidAccess) {
+        activeCourses.push(course)
+        if (!accessEntry) {
+          missingAccessMetadataCourseIds.push(course._id)
+        }
+      } else {
+        expiredCourseIds.push(course._id)
+      }
+    }
+
+    if (expiredCourseIds.length > 0) {
+      await User.findByIdAndUpdate(userId, {
+        $pull: {
+          courses: { $in: expiredCourseIds },
+          courseAccess: { course: { $in: expiredCourseIds } },
+        },
+      })
+
+      await Course.updateMany(
+        { _id: { $in: expiredCourseIds } },
+        { $pull: { studentsEnroled: userId } }
+      )
+
+      await CourseProgress.deleteMany({
+        courseID: { $in: expiredCourseIds },
+        userId,
+      })
+    }
+
+    if (missingAccessMetadataCourseIds.length > 0) {
+      await User.findByIdAndUpdate(userId, {
+        $push: {
+          courseAccess: {
+            $each: missingAccessMetadataCourseIds.map((courseId) => ({
+              course: courseId,
+              enrolledAt: now,
+              expiresAt: null,
+            })),
+          },
+        },
+      })
+    }
+
+    userDetails.courses = activeCourses
+
     var SubsectionLength = 0
     for (var i = 0; i < userDetails.courses.length; i++) {
       let totalDurationInSeconds = 0
@@ -209,12 +280,6 @@ exports.getEnrolledCourses = async (req, res) => {
       }
     }
 
-    if (!userDetails) {
-      return res.status(400).json({
-        success: false,
-        message: `Could not find user with id: ${userDetails}`,
-      })
-    }
     return res.status(200).json({
       success: true,
       data: userDetails.courses,

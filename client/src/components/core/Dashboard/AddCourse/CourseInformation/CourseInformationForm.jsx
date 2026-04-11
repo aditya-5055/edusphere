@@ -32,6 +32,13 @@ export default function CourseInformationForm() {
   const [loading, setLoading] = useState(false)
   const [courseCategories, setCourseCategories] = useState([])
 
+  const normalizeDurationValue = (value) => {
+    if (value === "" || value === null || value === undefined || Number.isNaN(value)) {
+      return ""
+    }
+    return Number(value)
+  }
+
   useEffect(() => {
     const getCategories = async () => {
       setLoading(true)
@@ -48,6 +55,7 @@ export default function CourseInformationForm() {
       setValue("courseTitle", course.courseName)
       setValue("courseShortDesc", course.courseDescription)
       setValue("coursePrice", course.price)
+      setValue("accessDurationInDays", course.accessDurationInDays || "")
       setValue("courseTags", course.tag)
       setValue("courseBenefits", course.whatYouWillLearn)
       setValue("courseCategory", course.category)
@@ -66,6 +74,8 @@ export default function CourseInformationForm() {
       currentValues.courseTitle !== course.courseName ||
       currentValues.courseShortDesc !== course.courseDescription ||
       currentValues.coursePrice !== course.price ||
+      normalizeDurationValue(currentValues.accessDurationInDays) !==
+        normalizeDurationValue(course.accessDurationInDays) ||
       currentValues.courseTags.toString() !== course.tag.toString() ||
       currentValues.courseBenefits !== course.whatYouWillLearn ||
       currentValues.courseCategory._id !== course.category._id ||
@@ -100,6 +110,15 @@ export default function CourseInformationForm() {
         }
         if (currentValues.coursePrice !== course.price) {
           formData.append("price", data.coursePrice)
+        }
+        if (
+          normalizeDurationValue(currentValues.accessDurationInDays) !==
+          normalizeDurationValue(course.accessDurationInDays)
+        ) {
+          formData.append(
+            "accessDurationInDays",
+            normalizeDurationValue(data.accessDurationInDays)
+          )
         }
         if (currentValues.courseTags.toString() !== course.tag.toString()) {
           formData.append("tag", JSON.stringify(data.courseTags))
@@ -140,6 +159,10 @@ export default function CourseInformationForm() {
     formData.append("courseName", data.courseTitle)
     formData.append("courseDescription", data.courseShortDesc)
     formData.append("price", data.coursePrice)
+    formData.append(
+      "accessDurationInDays",
+      normalizeDurationValue(data.accessDurationInDays)
+    )
     formData.append("tag", JSON.stringify(data.courseTags))
     formData.append("whatYouWillLearn", data.courseBenefits)
     formData.append("category", data.courseCategory)
@@ -220,6 +243,33 @@ export default function CourseInformationForm() {
         {errors.coursePrice && (
           <span className="ml-2 text-xs tracking-wide text-pink-200">
             Course Price is required
+          </span>
+        )}
+      </div>
+
+      {/* Course Access Duration */}
+      <div className="flex flex-col space-y-2">
+        <label className="text-sm text-richblack-5" htmlFor="accessDurationInDays">
+          Course Access Duration (Days)
+        </label>
+        <input
+          id="accessDurationInDays"
+          type="number"
+          min={1}
+          placeholder="Leave empty for lifetime access"
+          {...register("accessDurationInDays", {
+            setValueAs: (value) =>
+              value === "" || value === null || value === undefined
+                ? ""
+                : Number(value),
+            validate: (value) =>
+              value === "" || Number.isInteger(value) && value > 0,
+          })}
+          className="form-style w-full"
+        />
+        {errors.accessDurationInDays && (
+          <span className="ml-2 text-xs tracking-wide text-pink-200">
+            Enter a valid positive number of days or leave it empty
           </span>
         )}
       </div>

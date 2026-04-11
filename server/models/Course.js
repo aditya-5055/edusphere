@@ -27,6 +27,10 @@ const coursesSchema = new mongoose.Schema({
   price: {
     type: Number,
   },
+  accessDurationInDays: {
+    type: Number,
+    default: null,
+  },
   thumbnail: {
     type: String,
   },

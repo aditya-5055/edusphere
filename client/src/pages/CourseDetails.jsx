@@ -12,6 +12,7 @@ import ConfirmationModal from "../components/Common/ConfirmationModal"
 import Footer from "../components/Common/Footer"
 import CourseAccordionBar from "../components/core/Course/CourseAccordionBar"
 import CourseDetailsCard from "../components/core/Course/CourseDetailsCard"
+import LiveClassesSection from "../components/live/LiveClassesSection"
 import { formatDate } from "../services/formatDate"
 import { fetchCourseDetails } from "../services/operations/courseDetailsAPI"
 import { BuyCourse } from "../services/operations/studentFeaturesAPI"
@@ -302,6 +303,8 @@ function CourseDetails() {
                 />
               ))}
             </div>
+
+            <LiveClassesSection courseId={courseId} isInstructorView={false} />
 
             {/* Author Details */}
             <div className="mt-12 rounded-xl border border-richblack-700 bg-richblack-800/30 p-8">

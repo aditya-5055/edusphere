@@ -157,6 +157,7 @@ Disabled when loading */}
       {course.courseContent.length > 0 && (
         <NestedView handleChangeEditSectionName={handleChangeEditSectionName} />
       )}
+
       {/* Next Prev Button */}
 
       <div className="flex justify-end gap-x-3">

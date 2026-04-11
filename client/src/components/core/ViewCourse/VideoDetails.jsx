@@ -22,6 +22,7 @@ const VideoDetails = () => {
   const [previewSource, setPreviewSource] = useState(null)
   const [videoEnded, setVideoEnded] = useState(false)
   const [loading, setLoading] = useState(false)
+  const safeVideoUrl = videoData?.videoUrl?.trim() ? videoData.videoUrl : null
 
   useEffect(() => {
     if (!courseSectionData.length) return
@@ -152,12 +153,12 @@ const VideoDetails = () => {
           alt="Preview"
           className="h-full w-full rounded-md object-cover"
         />
-      ) : (
+      ) : safeVideoUrl ? (
         <div className="relative">
           {/* ✅ Native HTML5 video player — works perfectly with Cloudinary MP4 */}
           <video
             ref={playerRef}
-            src={videoData?.videoUrl}
+            src={safeVideoUrl}
             controls
             width="100%"
             style={{ height: "500px", backgroundColor: "black" }}
@@ -213,6 +214,10 @@ const VideoDetails = () => {
               </div>
             </div>
           )}
+        </div>
+      ) : (
+        <div className="rounded-md border border-richblack-700 bg-richblack-800 p-6">
+          <p className="text-richblack-100">This lecture does not have a video yet.</p>
         </div>
       )}
 

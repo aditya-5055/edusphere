@@ -52,6 +52,23 @@ const userSchema = new mongoose.Schema(
         ref: "Course",
       },
     ],
+    courseAccess: [
+      {
+        course: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Course",
+          required: true,
+        },
+        enrolledAt: {
+          type: Date,
+          default: Date.now,
+        },
+        expiresAt: {
+          type: Date,
+          default: null,
+        },
+      },
+    ],
     token: {
       type: String,
     },

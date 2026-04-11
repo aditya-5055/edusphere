@@ -1,10 +1,22 @@
  
 import { createSlice } from "/node_modules/.vite/deps/@reduxjs_toolkit.js?v=e5476b85";
 
+const getStoredToken = () => {
+  const storedToken = localStorage.getItem("token");
+  if (!storedToken) return null;
+
+  try {
+    const parsedToken = JSON.parse(storedToken);
+    return typeof parsedToken === "string" ? parsedToken : storedToken;
+  } catch {
+    return storedToken;
+  }
+};
+
 const initialState = {
   signupData: null,
   loading: false,
-  token: localStorage.getItem("token") || null,
+  token: getStoredToken(),
 };
 
 const authSlice = createSlice({

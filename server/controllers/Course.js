@@ -2,6 +2,7 @@ const Course = require("../models/Course.js")
 const Category = require("../models/Category.js")
 const Section = require("../models/Section.js")
 const SubSection = require("../models/Subsection.js")
+const LiveLecture = require("../models/LiveLecture")
 const User = require("../models/User.js")
 const { uploadImageToCloudinary } = require("../utils/imageUploader")
 const CourseProgress = require("../models/CourseProgress.js")
@@ -16,6 +17,7 @@ exports.createCourse = async (req, res) => {
       courseDescription,
       whatYouWillLearn,
       price,
+      accessDurationInDays,
       tag: _tag,
       category,
       status,
@@ -44,6 +46,25 @@ exports.createCourse = async (req, res) => {
     if (!status) {
       status = "Draft"
     }
+
+    let normalizedAccessDuration = null
+    if (
+      accessDurationInDays !== undefined &&
+      accessDurationInDays !== null &&
+      accessDurationInDays !== ""
+    ) {
+      normalizedAccessDuration = Number(accessDurationInDays)
+      if (
+        !Number.isInteger(normalizedAccessDuration) ||
+        normalizedAccessDuration <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Access duration must be a positive integer in days",
+        })
+      }
+    }
+
     const instructorDetails = await User.findById(userId)
 
     if (!instructorDetails || instructorDetails.accountType !== "Instructor") {
@@ -77,6 +98,7 @@ exports.createCourse = async (req, res) => {
       thumbnail: thumbnailImage.secure_url,
       status,
       instructions,
+      accessDurationInDays: normalizedAccessDuration,
     })
 
     await User.findByIdAndUpdate(
@@ -157,6 +179,19 @@ exports.editCourse = async (req, res) => {
       
       if (key === "tag" || key === "instructions") {
         course[key] = JSON.parse(updates[key])
+      } else if (key === "accessDurationInDays") {
+        if (updates[key] === "" || updates[key] === null) {
+          course[key] = null
+        } else {
+          const parsedDuration = Number(updates[key])
+          if (!Number.isInteger(parsedDuration) || parsedDuration <= 0) {
+            return res.status(400).json({
+              success: false,
+              message: "Access duration must be a positive integer in days",
+            })
+          }
+          course[key] = parsedDuration
+        }
       } else {
         course[key] = updates[key]
       }
@@ -298,6 +333,62 @@ exports.getFullCourseDetails = async (req, res) => {
       })
     }
     
+    const requestingUser = await User.findById(userId)
+      .select("accountType courseAccess courses")
+      .lean()
+
+    if (!requestingUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    if (requestingUser.accountType === "Student") {
+      const now = new Date()
+      const accessEntry = (requestingUser.courseAccess || []).find(
+        (entry) => String(entry.course) === String(courseId)
+      )
+      const hasLegacyEnrollment = (requestingUser.courses || []).some(
+        (enrolledCourseId) => String(enrolledCourseId) === String(courseId)
+      )
+
+      const hasValidAccess =
+        accessEntry
+          ? !accessEntry.expiresAt || new Date(accessEntry.expiresAt) > now
+          : hasLegacyEnrollment
+
+      if (!accessEntry && hasLegacyEnrollment) {
+        await User.findByIdAndUpdate(userId, {
+          $push: {
+            courseAccess: {
+              course: courseId,
+              enrolledAt: now,
+              expiresAt: null,
+            },
+          },
+        })
+      }
+
+      if (!hasValidAccess) {
+        await User.findByIdAndUpdate(userId, {
+          $pull: {
+            courses: courseId,
+            courseAccess: { course: courseId },
+          },
+        })
+        await Course.findByIdAndUpdate(courseId, {
+          $pull: { studentsEnroled: userId },
+        })
+        await CourseProgress.deleteOne({ courseID: courseId, userId })
+
+        return res.status(403).json({
+          success: false,
+          message: "Your access to this course has expired",
+        })
+      }
+    }
+
     // console.log("Fetching course:", courseId)
     
     const courseDetails = await Course.findOne({
@@ -337,9 +428,13 @@ exports.getFullCourseDetails = async (req, res) => {
     let totalDurationInSeconds = 0
     
     if (courseDetails.courseContent && Array.isArray(courseDetails.courseContent)) {
+      const subSectionIds = []
+
       courseDetails.courseContent.forEach((content) => {
         if (content.subSection && Array.isArray(content.subSection)) {
           content.subSection.forEach((subSection) => {
+            subSectionIds.push(subSection._id)
+
             // ✅ FIXED: Only add if timeDuration exists and is valid
             const timeDurationInSeconds = parseInt(subSection.timeDuration)
             if (!isNaN(timeDurationInSeconds)) {
@@ -348,6 +443,39 @@ exports.getFullCourseDetails = async (req, res) => {
           })
         }
       })
+
+      if (subSectionIds.length > 0) {
+        const recordedLectures = await LiveLecture.find({
+          courseId,
+          subSectionId: { $in: subSectionIds },
+          recordingUrl: { $exists: true, $ne: null },
+        })
+          .select("subSectionId recordingUrl")
+          .lean()
+
+        const recordingUrlBySubSectionId = new Map(
+          recordedLectures.map((lecture) => [
+            lecture.subSectionId?.toString(),
+            lecture.recordingUrl,
+          ])
+        )
+
+        courseDetails.courseContent.forEach((content) => {
+          if (!content.subSection || !Array.isArray(content.subSection)) return
+
+          content.subSection.forEach((subSection) => {
+            if (subSection.videoUrl) return
+
+            const fallbackRecordingUrl = recordingUrlBySubSectionId.get(
+              subSection._id?.toString()
+            )
+
+            if (fallbackRecordingUrl) {
+              subSection.videoUrl = fallbackRecordingUrl
+            }
+          })
+        })
+      }
     }
     
     const totalDuration = convertSecondsToDuration(totalDurationInSeconds)

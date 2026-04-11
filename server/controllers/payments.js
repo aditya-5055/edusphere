@@ -141,10 +141,11 @@ const enrollStudents = async (courses, userId, res) => {
 
   for (const courseId of courses) {
     try {
+      const now = new Date()
       // Find the course and enroll the student in it
       const enrolledCourse = await Course.findOneAndUpdate(
         { _id: courseId },
-        { $push: { studentsEnroled: userId } },
+        { $addToSet: { studentsEnroled: userId } },
         { new: true }
       )
 
@@ -155,18 +156,51 @@ const enrollStudents = async (courses, userId, res) => {
       }
       // console.log("Updated course: ", enrolledCourse)
 
-      const courseProgress = await CourseProgress.create({
+      let courseProgress = await CourseProgress.findOne({
         courseID: courseId,
         userId: userId,
-        completedVideos: [],
       })
+
+      if (!courseProgress) {
+        courseProgress = await CourseProgress.create({
+          courseID: courseId,
+          userId: userId,
+          completedVideos: [],
+        })
+      }
+
+      let expiresAt = null
+      if (
+        enrolledCourse.accessDurationInDays &&
+        Number.isInteger(enrolledCourse.accessDurationInDays) &&
+        enrolledCourse.accessDurationInDays > 0
+      ) {
+        expiresAt = new Date(now)
+        expiresAt.setDate(expiresAt.getDate() + enrolledCourse.accessDurationInDays)
+      }
+
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $pull: { courseAccess: { course: courseId } },
+        },
+        { new: true }
+      )
+
       // Find the student and add the course to their list of enrolled courses
       const enrolledStudent = await User.findByIdAndUpdate(
         userId,
         {
-          $push: {
+          $addToSet: {
             courses: courseId,
             courseProgress: courseProgress._id,
+          },
+          $push: {
+            courseAccess: {
+              course: courseId,
+              enrolledAt: now,
+              expiresAt,
+            },
           },
         },
         { new: true }

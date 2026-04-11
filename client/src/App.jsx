@@ -11,6 +11,7 @@ import Cart from "./components/core/Dashboard/Cart";
 import Home from "./pages/Home";
 import MyCourses from "./components/core/Dashboard/MyCourses";
 import EditCourse from "./components/core/Dashboard/EditCourse";
+import InstructorCourseManager from "./components/core/Dashboard/InstructorCourses/InstructorCourseManager";
 import Catalog from "./pages/Catalog";
 import CourseDetails from "./pages/CourseDetails";
 import Login from "./pages/Login";
@@ -21,6 +22,7 @@ import Dashboard from "./pages/Dashboard";
 import MyProfile from "./components/core/Dashboard/MyProfile";
 import PrivateRoute from "./components/core/Auth/PrivateRoute";
 import EnrolledCourses from "./components/core/Dashboard/EnrolledCourses";
+import StudentLiveClasses from "./components/core/Dashboard/StudentLiveClasses";
 import Error from "./pages/Error";
 import About from "./pages/About";
 import VideoDetails from "./components/core/ViewCourse/VideoDetails";
@@ -29,6 +31,10 @@ import UpdatePassword from "./pages/UpdatePassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import OpenRoute from "./components/core/Auth/OpenRoute";
 import ViewCourse from "./pages/ViewCourse";
+import InstructorLiveRoute from "./components/core/Auth/InstructorLiveRoute";
+import StudentLiveRoute from "./components/core/Auth/StudentLiveRoute";
+import InstructorLiveRoom from "./components/live/InstructorLiveRoom";
+import StudentLiveRoom from "./components/live/StudentLiveRoom";
 import { ACCOUNT_TYPE } from "./utils/constants";
 
 function App() {
@@ -112,6 +118,10 @@ function App() {
                 path="dashboard/edit-course/:courseId"
                 element={<EditCourse />}
               />
+              <Route
+                path="dashboard/course/:courseId/manage"
+                element={<InstructorCourseManager />}
+              />
             </>
           )}
 
@@ -121,6 +131,10 @@ function App() {
               <Route
                 path="dashboard/enrolled-courses"
                 element={<EnrolledCourses />}
+              />
+              <Route
+                path="dashboard/live-classes"
+                element={<StudentLiveClasses />}
               />
               <Route path="/dashboard/cart" element={<Cart />} />
             </>
@@ -143,6 +157,29 @@ function App() {
             </>
           )}
         </Route>
+
+        <Route
+          path="/live/instructor/:roomId"
+          element={
+            <PrivateRoute>
+              <InstructorLiveRoute>
+                <InstructorLiveRoom />
+              </InstructorLiveRoute>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/live/student/:roomId"
+          element={
+            <PrivateRoute>
+              <StudentLiveRoute>
+                {(courseId) => <StudentLiveRoom courseId={courseId} />}
+              </StudentLiveRoute>
+            </PrivateRoute>
+          }
+        />
+
         {/* 404 Page */}
         <Route path="*" element={<Error />} />
       </Routes>

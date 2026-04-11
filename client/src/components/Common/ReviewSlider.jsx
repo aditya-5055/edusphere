@@ -30,6 +30,7 @@ function StarDisplay({ rating }) {
 function ReviewSlider() {
   const [reviews, setReviews] = useState([])
   const truncateWords = 15
+  const canLoop = reviews.length > 4
 
   useEffect(() => {
     async function fetchReviews() {
@@ -77,18 +78,22 @@ function ReviewSlider() {
               spaceBetween: 25,
             },
           }}
-          loop={true}
+          loop={canLoop}
           freeMode={true}
-          autoplay={{
-            delay: 2500,
-            disableOnInteraction: false,
-          }}
+          autoplay={
+            canLoop
+              ? {
+                  delay: 2500,
+                  disableOnInteraction: false,
+                }
+              : false
+          }
           modules={[FreeMode, Pagination, Autoplay]}
           className="w-full"
         >
           {reviews.map((review, i) => (
             <SwiperSlide key={i}>
-              <div className="flex flex-col gap-3 bg-richblack-800 p-4 text-sm text-richblack-25 rounded-lg h-full min-h-[160px]">
+              <div className="flex h-full min-h-40 flex-col gap-3 rounded-lg bg-richblack-800 p-4 text-sm text-richblack-25">
                 {/* User Info */}
                 <div className="flex items-center gap-3">
                   <img
@@ -98,7 +103,7 @@ function ReviewSlider() {
                         : `https://api.dicebear.com/5.x/initials/svg?seed=${review?.user?.firstName}+${review?.user?.lastName}`
                     }
                     alt={`${review?.user?.firstName} ${review?.user?.lastName}`}
-                    className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
+                    className="h-9 w-9 shrink-0 rounded-full object-cover"
                   />
                   <div className="flex flex-col min-w-0">
                     <h1 className="font-semibold text-richblack-5 truncate">
@@ -111,7 +116,7 @@ function ReviewSlider() {
                 </div>
 
                 {/* Review Text */}
-                <p className="font-medium text-richblack-25 text-xs sm:text-sm leading-relaxed flex-grow">
+                <p className="grow text-xs font-medium leading-relaxed text-richblack-25 sm:text-sm">
                   {review?.review.split(" ").length > truncateWords
                     ? `${review?.review
                         .split(" ")

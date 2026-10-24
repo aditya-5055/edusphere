@@ -6,6 +6,8 @@ import { motion } from "framer-motion"
 import { Camera, Image, X } from "lucide-react"
 
 import { updateDisplayPicture } from "../../../../services/operations/SettingsAPI"
+import { uploadToCloudinary } from "../../../../utils/cloudinaryUpload"
+import { toast } from "react-hot-toast"
 import IconBtn from "../../../Common/IconBtn"
 
 export default function ChangeProfilePicture() {
@@ -38,17 +40,27 @@ export default function ChangeProfilePicture() {
     }
   }
 
-  const handleFileUpload = () => {
+  const handleFileUpload = async () => {
     try {
       setLoading(true)
-      const formData = new FormData()
-      formData.append("displayPicture", imageFile)
-      dispatch(updateDisplayPicture(token, formData)).then(() => {
+      const uploadRes = await uploadToCloudinary({
+        file: imageFile,
+        folderType: "profile",
+        resourceType: "image",
+        token,
+      })
+
+      const payload = {
+        displayPictureUrl: uploadRes.secure_url,
+      }
+
+      dispatch(updateDisplayPicture(token, payload)).then(() => {
         setLoading(false)
         setImageFile(null)
       })
     } catch (error) {
       console.log("ERROR MESSAGE - ", error.message)
+      toast.error(error.message || "Failed to upload image")
       setLoading(false)
     }
   }

@@ -7,6 +7,7 @@ import toast from "react-hot-toast"
 import { Bell, Maximize2, Mic, MicOff, Minimize2, Monitor, MonitorOff, MoreHorizontal, PhoneOff, Send, Video, VideoOff, Paperclip } from "lucide-react"
 
 import ConfirmationModal from "../Common/ConfirmationModal"
+import { uploadToCloudinary } from "../../utils/cloudinaryUpload"
 
 const getRtcConfig = () => {
   const stunList =
@@ -33,30 +34,22 @@ const getRtcConfig = () => {
 }
 
 const getSocketUrl = () => {
+  // Always prefer an explicit socket URL if provided.
   const explicitSocketUrl = import.meta.env.VITE_SOCKET_URL
   if (explicitSocketUrl) {
     return explicitSocketUrl
   }
 
+  // Derive the socket origin from the backend API base URL.
+  // We must NOT fall back to window.location.origin here because
+  // on a different device the frontend may be served from a Vite
+  // dev-server port (e.g. :5173) that has no socket server on it.
   const baseUrl = import.meta.env.VITE_BASE_URL
-
   if (baseUrl) {
     try {
-      const resolvedOrigin = new URL(baseUrl).origin
-      const resolvedHost = new URL(resolvedOrigin).hostname
-      const isLocalBackend =
-        resolvedHost === "localhost" || resolvedHost === "127.0.0.1"
-      const isLocalFrontend =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"
-
-      if (isLocalBackend && !isLocalFrontend) {
-        return window.location.origin
-      }
-
-      return resolvedOrigin
+      return new URL(baseUrl).origin
     } catch {
-      return window.location.origin
+      // baseUrl is malformed — fall through to location origin.
     }
   }
 
@@ -663,18 +656,21 @@ export default function InstructorLiveRoom({ roomId: roomIdProp, lectureId: lect
       return false
     }
 
-    const formData = new FormData()
-    formData.append("recording", blobToUpload, `lecture-${targetLectureId}.webm`)
-
     try {
       setIsUploadingRecording(true)
+      const uploadRes = await uploadToCloudinary({
+        file: blobToUpload,
+        folderType: "live-recording",
+        resourceType: "video",
+        token,
+      })
+
       await apiConnector(
         "POST",
         `${getLiveLectureApiBase()}/${targetLectureId}/upload-recording`,
-        formData,
+        { recordingUrl: uploadRes.secure_url },
         {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
         }
       )
       toast.success("Recording uploaded to course")
@@ -686,8 +682,8 @@ export default function InstructorLiveRoom({ roomId: roomIdProp, lectureId: lect
       }
       setPendingRecordingPreview(null)
       return true
-    } catch {
-      toast.error("Could not upload recording")
+    } catch (error) {
+      toast.error(error.message || "Could not upload recording")
       return false
     } finally {
       setIsUploadingRecording(false)
@@ -965,24 +961,17 @@ export default function InstructorLiveRoom({ roomId: roomIdProp, lectureId: lect
     const file = event.target.files?.[0]
     if (!file || !token || !roomId || !socketRef.current) return
 
-    const formData = new FormData()
-    formData.append("chatFile", file)
-    formData.append("roomId", roomId)
-
     try {
       setChatUploadLoading(true)
-      const response = await apiConnector(
-        "POST",
-        `${getLiveLectureApiBase()}/chat-media`,
-        formData,
-        {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        }
-      )
+      const uploadRes = await uploadToCloudinary({
+        file,
+        folderType: "live-chat",
+        resourceType: "auto",
+        token,
+      })
 
-      const mediaUrl = response?.data?.data?.mediaUrl
-      const mediaType = response?.data?.data?.mediaType
+      const mediaUrl = uploadRes.secure_url
+      const mediaType = uploadRes.resource_type || "image"
       if (!mediaUrl) return
 
       const payload = {
@@ -998,12 +987,12 @@ export default function InstructorLiveRoom({ roomId: roomIdProp, lectureId: lect
 
       socketRef.current.emit("chat-message", payload)
       setChatMessages((prev) => [...prev, payload])
-    } catch {
-      toast.error("Failed to upload media")
+    } catch (error) {
+      toast.error(error.message || "Failed to upload media")
     } finally {
       setChatUploadLoading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+      if (chatFileInputRef.current) {
+        chatFileInputRef.current.value = ""
       }
     }
   }

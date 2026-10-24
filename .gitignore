@@ -33,3 +33,7 @@ server/.env
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch & test files
+server/prac*
+server/test.py

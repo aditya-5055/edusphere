@@ -1,5 +1,5 @@
  
-import { createSlice } from "/node_modules/.vite/deps/@reduxjs_toolkit.js?v=e5476b85";
+import { createSlice } from "@reduxjs/toolkit";
 
 const getStoredToken = () => {
   const storedToken = localStorage.getItem("token");

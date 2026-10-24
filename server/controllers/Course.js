@@ -3,8 +3,8 @@ const Category = require("../models/Category.js")
 const Section = require("../models/Section.js")
 const SubSection = require("../models/Subsection.js")
 const LiveLecture = require("../models/LiveLecture")
+const CourseNote = require("../models/CourseNote")
 const User = require("../models/User.js")
-const { uploadImageToCloudinary } = require("../utils/imageUploader")
 const CourseProgress = require("../models/CourseProgress.js")
 const { convertSecondsToDuration } = require("../utils/secToDuration")
 
@@ -22,11 +22,22 @@ exports.createCourse = async (req, res) => {
       category,
       status,
       instructions: _instructions,
+      thumbnailImage,
+      thumbnail,
     } = req.body
-    const thumbnail = req.files.thumbnailImage
 
-    const tag = JSON.parse(_tag)
-    const instructions = JSON.parse(_instructions)
+    const thumbnailUrl = thumbnailImage || thumbnail
+
+    const tag = Array.isArray(_tag)
+      ? _tag
+      : typeof _tag === "string"
+      ? JSON.parse(_tag)
+      : []
+    const instructions = Array.isArray(_instructions)
+      ? _instructions
+      : typeof _instructions === "string"
+      ? JSON.parse(_instructions)
+      : []
 
     if (
       !courseName ||
@@ -34,7 +45,7 @@ exports.createCourse = async (req, res) => {
       !whatYouWillLearn ||
       !price ||
       !tag.length ||
-      !thumbnail ||
+      !thumbnailUrl ||
       !category ||
       !instructions.length
     ) {
@@ -82,11 +93,6 @@ exports.createCourse = async (req, res) => {
       })
     }
 
-    const thumbnailImage = await uploadImageToCloudinary(
-      thumbnail,
-      process.env.FOLDER_NAME
-    )
-
     const newCourse = await Course.create({
       courseName,
       courseDescription,
@@ -95,7 +101,7 @@ exports.createCourse = async (req, res) => {
       price,
       tag,
       category: categoryDetails._id,
-      thumbnail: thumbnailImage.secure_url,
+      thumbnail: thumbnailUrl,
       status,
       instructions,
       accessDurationInDays: normalizedAccessDuration,
@@ -160,25 +166,24 @@ exports.editCourse = async (req, res) => {
 
     // console.log("Course found:", course.courseName)
 
-    // Handle thumbnail upload only if file is present
-    if (req.files && req.files.thumbnailImage) {
-      console.log("Uploading thumbnail...")
-      const thumbnail = req.files.thumbnailImage
-      const thumbnailImage = await uploadImageToCloudinary(
-        thumbnail,
-        process.env.FOLDER_NAME
-      )
-      course.thumbnail = thumbnailImage.secure_url
-      // console.log("Thumbnail uploaded successfully")
+    // Handle thumbnail URL if present in updates
+    if (updates.thumbnailImage || updates.thumbnail) {
+      course.thumbnail = updates.thumbnailImage || updates.thumbnail
     }
  
-    const keysToUpdate = Object.keys(updates).filter(key => key !== "courseId")
+    const keysToUpdate = Object.keys(updates).filter(
+      (key) => key !== "courseId" && key !== "thumbnailImage" && key !== "thumbnail"
+    )
     
     for (const key of keysToUpdate) {
       console.log(`Updating ${key}:`, updates[key])
       
       if (key === "tag" || key === "instructions") {
-        course[key] = JSON.parse(updates[key])
+        course[key] = Array.isArray(updates[key])
+          ? updates[key]
+          : typeof updates[key] === "string"
+          ? JSON.parse(updates[key])
+          : []
       } else if (key === "accessDurationInDays") {
         if (updates[key] === "" || updates[key] === null) {
           course[key] = null
@@ -231,6 +236,7 @@ exports.editCourse = async (req, res) => {
     })
   }
 }
+
 // Get Course List
 exports.getAllCourses = async (req, res) => {
   try {
@@ -574,6 +580,8 @@ exports.deleteCourse = async (req, res) => {
         $pull: { courses: courseId },
       })
     }
+
+    await CourseNote.deleteMany({ course: courseId })
 
      const courseSections = course.courseContent || []
     for (const sectionId of courseSections) {

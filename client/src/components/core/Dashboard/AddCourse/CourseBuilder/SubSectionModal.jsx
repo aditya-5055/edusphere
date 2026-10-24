@@ -9,6 +9,7 @@ import {
   updateSubSection,
 } from "../../../../../services/operations/courseDetailsAPI";
 import { setCourse } from "../../../../../slices/courseSlice";
+import { uploadToCloudinary } from "../../../../../utils/cloudinaryUpload";
 import IconBtn from "../../../../Common/IconBtn";
 import Upload from "../Upload";
 
@@ -54,29 +55,50 @@ export default function SubSectionModal({
 
   const handleEditSubsection = async () => {
     const currentValues = getValues();
-    const formData = new FormData();
-    formData.append("sectionId", modalData.sectionId);
-    formData.append("subSectionId", modalData._id);
-    if (currentValues.lectureTitle !== modalData.title) {
-      formData.append("title", currentValues.lectureTitle);
-    }
-    if (currentValues.lectureDesc !== modalData.description) {
-      formData.append("description", currentValues.lectureDesc);
-    }
-    if (currentValues.lectureVideo !== modalData.videoUrl) {
-      formData.append("video", currentValues.lectureVideo);
-    }
     setLoading(true);
-    const result = await updateSubSection(formData, token);
-    if (result) {
-      const updatedCourseContent = course.courseContent.map((section) =>
-        section._id === modalData.sectionId ? result : section,
-      );
-      const updatedCourse = { ...course, courseContent: updatedCourseContent };
-      dispatch(setCourse(updatedCourse));
+
+    try {
+      let videoUrl = modalData.videoUrl;
+      let timeDuration = modalData.timeDuration || "0";
+
+      if (currentValues.lectureVideo !== modalData.videoUrl) {
+        if (currentValues.lectureVideo instanceof File) {
+          const uploadRes = await uploadToCloudinary({
+            file: currentValues.lectureVideo,
+            folderType: "course-video",
+            resourceType: "video",
+            token,
+          });
+          videoUrl = uploadRes.secure_url;
+          timeDuration = `${uploadRes.duration || "0"}`;
+        } else if (typeof currentValues.lectureVideo === "string") {
+          videoUrl = currentValues.lectureVideo;
+        }
+      }
+
+      const payload = {
+        sectionId: modalData.sectionId,
+        subSectionId: modalData._id,
+        title: currentValues.lectureTitle,
+        description: currentValues.lectureDesc,
+        videoUrl,
+        timeDuration,
+      };
+
+      const result = await updateSubSection(payload, token);
+      if (result) {
+        const updatedCourseContent = course.courseContent.map((section) =>
+          section._id === modalData.sectionId ? result : section,
+        );
+        const updatedCourse = { ...course, courseContent: updatedCourseContent };
+        dispatch(setCourse(updatedCourse));
+      }
+      setModalData(null);
+    } catch (error) {
+      toast.error(error.message || "Failed to update lecture");
+    } finally {
+      setLoading(false);
     }
-    setModalData(null);
-    setLoading(false);
   };
 
   const onSubmit = async (data) => {
@@ -91,22 +113,52 @@ export default function SubSectionModal({
       return;
     }
 
-    const formData = new FormData();
-    formData.append("sectionId", modalData);
-    formData.append("title", data.lectureTitle);
-    formData.append("description", data.lectureDesc);
-    formData.append("video", data.lectureVideo);
     setLoading(true);
-    const result = await createSubSection(formData, token);
-    if (result) {
-      const updatedCourseContent = course.courseContent.map((section) =>
-        section._id === modalData ? result : section,
-      );
-      const updatedCourse = { ...course, courseContent: updatedCourseContent };
-      dispatch(setCourse(updatedCourse));
+    try {
+      let videoUrl = "";
+      let timeDuration = "0";
+
+      if (data.lectureVideo instanceof File) {
+        const uploadRes = await uploadToCloudinary({
+          file: data.lectureVideo,
+          folderType: "course-video",
+          resourceType: "video",
+          token,
+        });
+        videoUrl = uploadRes.secure_url;
+        timeDuration = `${uploadRes.duration || "0"}`;
+      } else if (typeof data.lectureVideo === "string") {
+        videoUrl = data.lectureVideo;
+      }
+
+      if (!videoUrl) {
+        toast.error("Video upload failed");
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
+        sectionId: modalData,
+        title: data.lectureTitle,
+        description: data.lectureDesc,
+        videoUrl,
+        timeDuration,
+      };
+
+      const result = await createSubSection(payload, token);
+      if (result) {
+        const updatedCourseContent = course.courseContent.map((section) =>
+          section._id === modalData ? result : section,
+        );
+        const updatedCourse = { ...course, courseContent: updatedCourseContent };
+        dispatch(setCourse(updatedCourse));
+      }
+      setModalData(null);
+    } catch (error) {
+      toast.error(error.message || "Failed to create lecture");
+    } finally {
+      setLoading(false);
     }
-    setModalData(null);
-    setLoading(false);
   };
 
   return (

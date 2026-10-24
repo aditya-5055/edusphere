@@ -7,4 +7,10 @@ export default defineConfig({
     react(),
     tailwindcss(), // ← THIS LINE IS REQUIRED
   ],
+  server: {
+    // Bind to 0.0.0.0 so other devices on the LAN can access the dev server.
+    // Without this, Vite only listens on localhost and cross-device testing is impossible.
+    host: true,
+    port: 5173,
+  },
 });

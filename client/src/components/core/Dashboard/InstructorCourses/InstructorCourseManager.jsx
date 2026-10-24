@@ -5,6 +5,7 @@ import { FiEdit2 } from "react-icons/fi"
 import { HiOutlineCollection, HiOutlineClock, HiOutlinePresentationChartBar } from "react-icons/hi"
 
 import LiveClassesSection from "../../../live/LiveClassesSection"
+import CourseNotesManager from "./CourseNotesManager"
 import { getFullDetailsOfCourse } from "../../../../services/operations/courseDetailsAPI"
 
 export default function InstructorCourseManager() {
@@ -133,7 +134,7 @@ export default function InstructorCourseManager() {
       </div>
 
       <div className="mt-6 rounded-xl border border-richblack-700 bg-richblack-800 p-1">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => setActiveTab("content")}
@@ -155,6 +156,17 @@ export default function InstructorCourseManager() {
             }`}
           >
             Live Classes
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("notes")}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+              activeTab === "notes"
+                ? "bg-yellow-50 text-richblack-900"
+                : "text-richblack-200 hover:bg-richblack-700"
+            }`}
+          >
+            Notes
           </button>
         </div>
       </div>
@@ -200,8 +212,10 @@ export default function InstructorCourseManager() {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === "live" ? (
         <LiveClassesSection courseId={courseId} isInstructorView={true} />
+      ) : (
+        <CourseNotesManager courseId={courseId} />
       )}
     </div>
   )

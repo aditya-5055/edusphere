@@ -19,6 +19,10 @@ const {
   DELETE_SUBSECTION_API,
   GET_ALL_INSTRUCTOR_COURSES_API,
   DELETE_COURSE_API,
+  CREATE_COURSE_NOTE_API,
+  GET_COURSE_NOTES_API,
+  DELETE_COURSE_NOTE_API,
+  COURSE_NOTE_ACCESS_API,
   GET_FULL_COURSE_DETAILS_AUTHENTICATED,
   CREATE_RATING_API,
   LECTURE_COMPLETION_API,
@@ -88,7 +92,6 @@ export const addCourseDetails = async (data, token) => {
   const toastId = toast.loading("Loading...")
   try {
     const response = await apiConnector("POST", CREATE_COURSE_API, data, {
-      "Content-Type": "multipart/form-data",
       Authorization: `Bearer ${token}`,
     })
     // console.log("CREATE COURSE API RESPONSE............", response)
@@ -111,7 +114,6 @@ export const editCourseDetails = async (data, token) => {
   const toastId = toast.loading("Loading...")
   try {
     const response = await apiConnector("POST", EDIT_COURSE_API, data, {
-      "Content-Type": "multipart/form-data",
       Authorization: `Bearer ${token}`,
     })
     // console.log("EDIT COURSE API RESPONSE............", response)
@@ -383,6 +385,122 @@ export const createRating = async (data, token) => {
     // console.log("CREATE RATING API ERROR............", error)
     toast.error(error.message)
   }
+  toast.dismiss(toastId)
+  return success
+}
+
+export const uploadCourseNote = async (data, token) => {
+  let result = null
+  const toastId = toast.loading("Uploading note...")
+
+  try {
+    const response = await apiConnector("POST", CREATE_COURSE_NOTE_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Upload Note")
+    }
+
+    result = response?.data?.data
+    toast.success("Note uploaded successfully")
+  } catch (error) {
+    toast.error(error?.response?.data?.message || error.message)
+  }
+
+  toast.dismiss(toastId)
+  return result
+}
+
+export const fetchCourseNotes = async (courseId, token) => {
+  let result = []
+  const toastId = toast.loading("Loading notes...")
+
+  try {
+    const response = await apiConnector(
+      "GET",
+      `${GET_COURSE_NOTES_API}/${courseId}`,
+      null,
+      {
+        Authorization: `Bearer ${token}`,
+      }
+    )
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Fetch Notes")
+    }
+
+    result = response?.data?.data || []
+  } catch (error) {
+    toast.error(error?.response?.data?.message || error.message)
+  }
+
+  toast.dismiss(toastId)
+  return result
+}
+
+export const getCourseNoteAccessUrl = async (
+  noteId,
+  token,
+  mode = "preview",
+  fallbackFileName = `note-${noteId}`,
+  fallbackContentType = "application/pdf"
+) => {
+  try {
+    const response = await fetch(
+      `${COURSE_NOTE_ACCESS_API}/${noteId}/access?mode=${mode}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
+    if (!response.ok) {
+      let message = "Could Not Open Note"
+      try {
+        const payload = await response.json()
+        message = payload?.message || message
+      } catch {
+        // ignore non-JSON error bodies
+      }
+      throw new Error(message)
+    }
+
+    const blob = await response.blob()
+    return {
+      blob,
+      contentType: response.headers.get("content-type") || fallbackContentType,
+      fileName:
+        response.headers.get("content-disposition")?.match(/filename="?([^\"]+)"?/i)?.[1] ||
+        fallbackFileName,
+    }
+  } catch (error) {
+    toast.error(error?.message || "Could Not Open Note")
+    return null
+  }
+}
+
+export const removeCourseNote = async (data, token) => {
+  let success = false
+  const toastId = toast.loading("Deleting note...")
+
+  try {
+    const response = await apiConnector("DELETE", DELETE_COURSE_NOTE_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || "Could Not Delete Note")
+    }
+
+    success = true
+    toast.success("Note deleted")
+  } catch (error) {
+    toast.error(error?.response?.data?.message || error.message)
+  }
+
   toast.dismiss(toastId)
   return success
 }

@@ -12,6 +12,7 @@ import {
 } from "../../../../../services/operations/courseDetailsAPI"
 import { setCourse, setStep } from "../../../../../slices/courseSlice"
 import { COURSE_STATUS } from "../../../../../utils/constants"
+import { uploadToCloudinary } from "../../../../../utils/cloudinaryUpload"
 import IconBtn from "../../../../Common/IconBtn"
 import Upload from "../Upload"
 import ChipInput from "./ChipInput"
@@ -88,94 +89,127 @@ export default function CourseInformationForm() {
     return false
   }
 
-  //   handle next button click
+  // handle next button click
   const onSubmit = async (data) => {
-    // console.log(data)
-
     if (editCourse) {
-      // const currentValues = getValues()
-      // console.log("changes after editing form values:", currentValues)
-      // console.log("now course:", course)
-      // console.log("Has Form Changed:", isFormUpdated())
       if (isFormUpdated()) {
         const currentValues = getValues()
-        const formData = new FormData()
-        // console.log(data)
-        formData.append("courseId", course._id)
-        if (currentValues.courseTitle !== course.courseName) {
-          formData.append("courseName", data.courseTitle)
-        }
-        if (currentValues.courseShortDesc !== course.courseDescription) {
-          formData.append("courseDescription", data.courseShortDesc)
-        }
-        if (currentValues.coursePrice !== course.price) {
-          formData.append("price", data.coursePrice)
-        }
-        if (
-          normalizeDurationValue(currentValues.accessDurationInDays) !==
-          normalizeDurationValue(course.accessDurationInDays)
-        ) {
-          formData.append(
-            "accessDurationInDays",
-            normalizeDurationValue(data.accessDurationInDays)
-          )
-        }
-        if (currentValues.courseTags.toString() !== course.tag.toString()) {
-          formData.append("tag", JSON.stringify(data.courseTags))
-        }
-        if (currentValues.courseBenefits !== course.whatYouWillLearn) {
-          formData.append("whatYouWillLearn", data.courseBenefits)
-        }
-        if (currentValues.courseCategory._id !== course.category._id) {
-          formData.append("category", data.courseCategory)
-        }
-        if (
-          currentValues.courseRequirements.toString() !==
-          course.instructions.toString()
-        ) {
-          formData.append(
-            "instructions",
-            JSON.stringify(data.courseRequirements)
-          )
-        }
-        if (currentValues.courseImage !== course.thumbnail) {
-          formData.append("thumbnailImage", data.courseImage)
-        }
-        // console.log("Edit Form data: ", formData)
         setLoading(true)
-        const result = await editCourseDetails(formData, token)
-        setLoading(false)
-        if (result) {
-          dispatch(setStep(2))
-          dispatch(setCourse(result))
+
+        try {
+          let thumbnailUrl = course.thumbnail
+          if (currentValues.courseImage !== course.thumbnail) {
+            if (data.courseImage instanceof File) {
+              const uploadRes = await uploadToCloudinary({
+                file: data.courseImage,
+                folderType: "course-thumbnail",
+                resourceType: "image",
+                token,
+              })
+              thumbnailUrl = uploadRes.secure_url
+            } else if (typeof data.courseImage === "string") {
+              thumbnailUrl = data.courseImage
+            }
+          }
+
+          const updates = { courseId: course._id }
+          if (currentValues.courseTitle !== course.courseName) {
+            updates.courseName = data.courseTitle
+          }
+          if (currentValues.courseShortDesc !== course.courseDescription) {
+            updates.courseDescription = data.courseShortDesc
+          }
+          if (currentValues.coursePrice !== course.price) {
+            updates.price = data.coursePrice
+          }
+          if (
+            normalizeDurationValue(currentValues.accessDurationInDays) !==
+            normalizeDurationValue(course.accessDurationInDays)
+          ) {
+            updates.accessDurationInDays = normalizeDurationValue(
+              data.accessDurationInDays
+            )
+          }
+          if (currentValues.courseTags.toString() !== course.tag.toString()) {
+            updates.tag = data.courseTags
+          }
+          if (currentValues.courseBenefits !== course.whatYouWillLearn) {
+            updates.whatYouWillLearn = data.courseBenefits
+          }
+          if (currentValues.courseCategory._id !== course.category._id) {
+            updates.category = data.courseCategory
+          }
+          if (
+            currentValues.courseRequirements.toString() !==
+            course.instructions.toString()
+          ) {
+            updates.instructions = data.courseRequirements
+          }
+          if (thumbnailUrl !== course.thumbnail) {
+            updates.thumbnailImage = thumbnailUrl
+          }
+
+          const result = await editCourseDetails(updates, token)
+          if (result) {
+            dispatch(setStep(2))
+            dispatch(setCourse(result))
+          }
+        } catch (error) {
+          toast.error(error.message || "Failed to update course")
+        } finally {
+          setLoading(false)
         }
       } else {
         toast.error("No changes made to the form")
       }
       return
     }
-// if we directly create a new course
-    const formData = new FormData()
-    formData.append("courseName", data.courseTitle)
-    formData.append("courseDescription", data.courseShortDesc)
-    formData.append("price", data.coursePrice)
-    formData.append(
-      "accessDurationInDays",
-      normalizeDurationValue(data.accessDurationInDays)
-    )
-    formData.append("tag", JSON.stringify(data.courseTags))
-    formData.append("whatYouWillLearn", data.courseBenefits)
-    formData.append("category", data.courseCategory)
-    formData.append("status", COURSE_STATUS.DRAFT)
-    formData.append("instructions", JSON.stringify(data.courseRequirements))
-    formData.append("thumbnailImage", data.courseImage)
+
+    // Creating a new course
     setLoading(true)
-    const result = await addCourseDetails(formData, token)
-    if (result) {
-      dispatch(setStep(2))
-      dispatch(setCourse(result))
+    try {
+      let thumbnailUrl = ""
+      if (data.courseImage instanceof File) {
+        const uploadRes = await uploadToCloudinary({
+          file: data.courseImage,
+          folderType: "course-thumbnail",
+          resourceType: "image",
+          token,
+        })
+        thumbnailUrl = uploadRes.secure_url
+      } else if (typeof data.courseImage === "string") {
+        thumbnailUrl = data.courseImage
+      }
+
+      if (!thumbnailUrl) {
+        toast.error("Thumbnail image upload failed")
+        setLoading(false)
+        return
+      }
+
+      const payload = {
+        courseName: data.courseTitle,
+        courseDescription: data.courseShortDesc,
+        price: data.coursePrice,
+        accessDurationInDays: normalizeDurationValue(data.accessDurationInDays),
+        tag: data.courseTags,
+        whatYouWillLearn: data.courseBenefits,
+        category: data.courseCategory,
+        status: COURSE_STATUS.DRAFT,
+        instructions: data.courseRequirements,
+        thumbnailImage: thumbnailUrl,
+      }
+
+      const result = await addCourseDetails(payload, token)
+      if (result) {
+        dispatch(setStep(2))
+        dispatch(setCourse(result))
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to create course")
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (

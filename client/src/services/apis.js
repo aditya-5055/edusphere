@@ -38,6 +38,10 @@ export const courseEndpoints = {
   DELETE_SECTION_API: BASE_URL + "/course/deleteSection",
   DELETE_SUBSECTION_API: BASE_URL + "/course/deleteSubSection",
   DELETE_COURSE_API: BASE_URL + "/course/deleteCourse",
+  CREATE_COURSE_NOTE_API: BASE_URL + "/course/addCourseNote",
+  GET_COURSE_NOTES_API: BASE_URL + "/course/getCourseNotes",
+  DELETE_COURSE_NOTE_API: BASE_URL + "/course/deleteCourseNote",
+  COURSE_NOTE_ACCESS_API: BASE_URL + "/course/note",
   GET_FULL_COURSE_DETAILS_AUTHENTICATED:
     BASE_URL + "/course/getFullCourseDetails",
   LECTURE_COMPLETION_API: BASE_URL + "/course/updateCourseProgress",
@@ -70,3 +74,9 @@ export const settingsEndpoints = {
   CHANGE_PASSWORD_API: BASE_URL + "/auth/changepassword",
   DELETE_PROFILE_API: BASE_URL + "/profile/deleteProfile",
 }
+
+// MEDIA UPLOAD ENDPOINTS
+export const mediaEndpoints = {
+  GENERATE_UPLOAD_SIGNATURE_API: BASE_URL + "/media/generate-signature",
+}
+

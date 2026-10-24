@@ -6,9 +6,7 @@ import { Swiper, SwiperSlide } from "swiper/react"
 import "swiper/css"
 import "swiper/css/free-mode"
 import "swiper/css/pagination"
-// import "../../.."
-// Import required modules
-// import { FreeMode, Pagination } from "swiper"
+ 
 import { FreeMode, Pagination } from "swiper/modules"
 
 

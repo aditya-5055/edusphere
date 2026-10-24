@@ -14,6 +14,12 @@ const {
   getInstructorCourses,
   deleteCourse,
 } = require("../controllers/Course")
+const {
+  createCourseNote,
+  getCourseNotes,
+  deleteCourseNote,
+  accessCourseNote,
+} = require("../controllers/CourseNote")
 
 // Tags Controllers Import
 
@@ -86,6 +92,12 @@ router.post("/updateCourseProgress", auth, isStudent, updateCourseProgress)
 // Delete a Course
 // router.delete("/deleteCourse", deleteCourse)
 router.delete("/deleteCourse", auth, isInstructor, deleteCourse)
+
+// Course Notes routes
+router.post("/addCourseNote", auth, isInstructor, createCourseNote)
+router.get("/getCourseNotes/:courseId", auth, getCourseNotes)
+router.delete("/deleteCourseNote", auth, isInstructor, deleteCourseNote)
+router.get("/note/:noteId/access", auth, accessCourseNote)
 
 
 // ********************************************************************************************************

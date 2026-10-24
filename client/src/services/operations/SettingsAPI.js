@@ -12,16 +12,15 @@ const {
   DELETE_PROFILE_API,
 } = settingsEndpoints
 
-export function updateDisplayPicture(token, formData) {
+export function updateDisplayPicture(token, data) {
   return async (dispatch) => {
     const toastId = toast.loading("Loading...")
     try {
       const response = await apiConnector(
         "PUT",
         UPDATE_DISPLAY_PICTURE_API,
-        formData,
+        data,
         {
-          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
         }
       )

@@ -58,6 +58,19 @@ export default function VideoDetailsSidebar({ setReviewModal }) {
     completedLectures,
   } = useSelector((state) => state.viewCourse)
 
+  const navigateToFirstLecture = () => {
+    const firstSection = courseSectionData?.[0]
+    const firstSubSection = firstSection?.subSection?.[0]
+
+    if (!firstSection?._id || !firstSubSection?._id || !courseEntireData?._id) {
+      return
+    }
+
+    navigate(
+      `/view-course/${courseEntireData._id}/section/${firstSection._id}/sub-section/${firstSubSection._id}`
+    )
+  }
+
   useEffect(() => {
     ;(() => {
       if (!courseSectionData.length) return
@@ -115,6 +128,15 @@ export default function VideoDetailsSidebar({ setReviewModal }) {
     }
   }, [courseId, token])
 
+  useEffect(() => {
+    if (location.pathname.includes("/notes")) {
+      setActiveTab("notes")
+      return
+    }
+
+    setActiveTab("content")
+  }, [location.pathname])
+
   return (
     <>
       <div className="flex h-[calc(100vh-3.5rem)] w-[320px] max-w-[350px] flex-col border-r-[1px] border-r-richblack-700 bg-richblack-800">
@@ -144,10 +166,15 @@ export default function VideoDetailsSidebar({ setReviewModal }) {
         </div>
 
         <div className="px-3 pt-3">
-          <div className="grid grid-cols-2 gap-2 rounded-md border border-richblack-700 bg-richblack-900 p-1">
+          <div className="grid grid-cols-3 gap-2 rounded-md border border-richblack-700 bg-richblack-900 p-1">
             <button
               type="button"
-              onClick={() => setActiveTab("content")}
+              onClick={() => {
+                setActiveTab("content")
+                if (location.pathname.includes("/notes")) {
+                  navigateToFirstLecture()
+                }
+              }}
               className={`rounded-md px-3 py-2 text-xs font-semibold transition-all ${
                 activeTab === "content"
                   ? "bg-yellow-50 text-richblack-900"
@@ -166,6 +193,20 @@ export default function VideoDetailsSidebar({ setReviewModal }) {
               }`}
             >
               Live Now
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("notes")
+                navigate(`/view-course/${courseId}/notes`)
+              }}
+              className={`rounded-md px-3 py-2 text-xs font-semibold transition-all ${
+                activeTab === "notes"
+                  ? "bg-yellow-50 text-richblack-900"
+                  : "text-richblack-200"
+              }`}
+            >
+              Notes
             </button>
           </div>
         </div>
@@ -279,6 +320,26 @@ export default function VideoDetailsSidebar({ setReviewModal }) {
                   </div>
                 ))
               )}
+            </div>
+          )}
+
+          {activeTab === "notes" && (
+            <div className="p-3">
+              <div className="rounded-md border border-richblack-700 bg-richblack-900 p-3">
+                <p className="text-sm font-semibold text-richblack-25">
+                  Course Notes Library
+                </p>
+                <p className="mt-1 text-xs text-richblack-300">
+                  Download all instructor-uploaded notes in one place.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/view-course/${courseId}/notes`)}
+                  className="mt-3 w-full rounded bg-yellow-50 px-3 py-2 text-xs font-semibold text-richblack-900"
+                >
+                  Open Notes
+                </button>
+              </div>
             </div>
           )}
         </div>

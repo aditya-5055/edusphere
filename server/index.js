@@ -8,6 +8,7 @@ const userRoutes = require("./routes/user");
 const profileRoutes = require("./routes/profile");
 const courseRoutes = require("./routes/Courses");
 const liveLectureRoutes = require("./routes/liveLecture");
+const mediaRoutes = require("./routes/media");
 const { registerLiveLectureSocket } = require("./socket/liveLectureSocket");
 // babbar write this below
 // const courseRoutes = require("./routes/Course");
@@ -18,7 +19,6 @@ const database = require("./config/database");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const { cloudinaryConnect } = require("./config/cloudinary");
-const fileUpload = require("express-fileupload");
 const dotenv = require("dotenv");
 
 // Setting up port number
@@ -39,18 +39,18 @@ const corsOrigin = allowedOrigins.length === 1 && allowedOrigins[0] === "*"
 database.connect();
  
 // Middlewares
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf
+    },
+  })
+);
 app.use(cookieParser());
 app.use(
 	cors({
 		origin: corsOrigin,
 		credentials: false,
-	})
-);
-app.use(
-	fileUpload({
-		useTempFiles: true,
-		tempFileDir: "/tmp/",
 	})
 );
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -59,17 +59,13 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 cloudinaryConnect();
 
 // Setting up routes
-// app.use("/api/v1/auth", userRoutes);
-// app.use("/api/v1/profile", profileRoutes);
-// app.use("/api/v1/course", courseRoutes);
-// app.use("/api/v1/payment", paymentRoutes);
-// app.use("/api/v1/reach", contactUsRoute);
-// Setting up routes
+ 
 app.use("/api/v1/auth", userRoutes)
 app.use("/api/v1/profile", profileRoutes)
 app.use("/api/v1/course", courseRoutes)
 app.use("/api/v1/payment", paymentRoutes)
 app.use("/api/v1/reach", contactUsRoute)
+app.use("/api/v1/media", mediaRoutes)
 app.use("/api/live-lectures", liveLectureRoutes)
 
 

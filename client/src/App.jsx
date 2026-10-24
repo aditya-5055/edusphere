@@ -26,6 +26,7 @@ import StudentLiveClasses from "./components/core/Dashboard/StudentLiveClasses";
 import Error from "./pages/Error";
 import About from "./pages/About";
 import VideoDetails from "./components/core/ViewCourse/VideoDetails";
+import CourseNotes from "./components/core/ViewCourse/CourseNotes";
 import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from "./pages/UpdatePassword";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -153,6 +154,10 @@ function App() {
               <Route
                 path="view-course/:courseId/section/:sectionId/sub-section/:subSectionId"
                 element={<VideoDetails />}
+              />
+              <Route
+                path="view-course/:courseId/notes"
+                element={<CourseNotes />}
               />
             </>
           )}

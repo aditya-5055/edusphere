@@ -5,7 +5,7 @@ const INSTRUCTOR_DISCONNECT_GRACE_MS = 90 * 1000
 const roomInstructorSockets = new Map()
 const autoEndTimers = new Map()
 const roomParticipants = new Map()
-
+// send the list of participent to frontend 
 const emitRoomParticipants = (io, roomId) => {
   if (!roomId) return
 
@@ -15,7 +15,7 @@ const emitRoomParticipants = (io, roomId) => {
     participants,
   })
 }
-
+// this fubnction use to make delete a room id auto when the instructor is disconnect for more that  2 min
 const clearAutoEndTimer = (roomId) => {
   const timer = autoEndTimers.get(roomId)
   if (timer) {
@@ -72,7 +72,7 @@ function registerLiveLectureSocket(io) {
       }
 
       socket.join(roomId)
-      socket.data.roomId = roomId
+      socket.data.roomId = roomIds
       socket.data.userId = userId
       socket.data.role = role
       socket.data.name = name || "User"
@@ -80,14 +80,14 @@ function registerLiveLectureSocket(io) {
       if (!roomParticipants.has(roomId)) {
         roomParticipants.set(roomId, new Map())
       }
-
+// store who is presrn inside this room
       roomParticipants.get(roomId).set(socket.id, {
         socketId: socket.id,
         userId,
         role,
         name: socket.data.name,
       })
-
+// we store instructor sockets for disconnecting them if they disconnect for more than 90 seconds in backent the instructor id is store so we need to chekck does he disconnect or not
       if (role === "instructor") {
         if (!roomInstructorSockets.has(roomId)) {
           roomInstructorSockets.set(roomId, new Set())
@@ -95,7 +95,7 @@ function registerLiveLectureSocket(io) {
         roomInstructorSockets.get(roomId).add(socket.id)
         clearAutoEndTimer(roomId)
       }
-
+// tell the other in room that i am join this room and also send them data for making them enable to make a peer connection 
       socket.to(roomId).emit("user-joined", {
         roomId,
         userId,
@@ -103,7 +103,7 @@ function registerLiveLectureSocket(io) {
         name: socket.data.name,
         socketId: socket.id,
       })
-
+// tell or updte the participent list when user join or left the room 
       io.to(roomId).emit("participant-updated", {
         roomId,
       })
@@ -114,7 +114,7 @@ function registerLiveLectureSocket(io) {
       if (!to || !offer) {
         return
       }
-
+// make a ffer for webrtc by the signiling server
       io.to(to).emit("offer", {
         roomId,
         offer,
@@ -123,7 +123,7 @@ function registerLiveLectureSocket(io) {
         name: socket.data.name || "User",
       })
     })
-
+// student send the answer for peer connecion 
     socket.on("answer", ({ roomId, answer, to }) => {
       if (!to || !answer) {
         return
@@ -137,7 +137,7 @@ function registerLiveLectureSocket(io) {
         name: socket.data.name || "User",
       })
     })
-
+// exchange ice canditate for establishing peer connection 
     socket.on("ice-candidate", ({ roomId, candidate, to }) => {
       if (!to || !candidate) {
         return

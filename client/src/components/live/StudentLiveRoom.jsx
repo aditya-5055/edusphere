@@ -3,6 +3,7 @@ import { useSelector } from "react-redux"
 import { useNavigate, useParams } from "react-router-dom"
 import { io } from "socket.io-client"
 import { apiConnector } from "../../services/apiConnector"
+import { uploadToCloudinary } from "../../utils/cloudinaryUpload"
 import { Maximize2, Mic, MicOff, Minimize2, Paperclip, PhoneOff, Send } from "lucide-react"
 
 const getRtcConfig = () => {
@@ -30,30 +31,22 @@ const getRtcConfig = () => {
 }
 
 const getSocketUrl = () => {
+  // Always prefer an explicit socket URL if provided.
   const explicitSocketUrl = import.meta.env.VITE_SOCKET_URL
   if (explicitSocketUrl) {
     return explicitSocketUrl
   }
 
+  // Derive the socket origin from the backend API base URL.
+  // We must NOT fall back to window.location.origin here because
+  // on a different device the frontend may be served from a Vite
+  // dev-server port (e.g. :5173) that has no socket server on it.
   const baseUrl = import.meta.env.VITE_BASE_URL
-
   if (baseUrl) {
     try {
-      const resolvedOrigin = new URL(baseUrl).origin
-      const resolvedHost = new URL(resolvedOrigin).hostname
-      const isLocalBackend =
-        resolvedHost === "localhost" || resolvedHost === "127.0.0.1"
-      const isLocalFrontend =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"
-
-      if (isLocalBackend && !isLocalFrontend) {
-        return window.location.origin
-      }
-
-      return resolvedOrigin
+      return new URL(baseUrl).origin
     } catch {
-      return window.location.origin
+      // baseUrl is malformed — fall through to location origin.
     }
   }
 
@@ -348,24 +341,17 @@ export default function StudentLiveRoom({ roomId: roomIdProp, courseId: courseId
     const file = event.target.files?.[0]
     if (!file || !token || !roomId || !socketRef.current) return
 
-    const formData = new FormData()
-    formData.append("chatFile", file)
-    formData.append("roomId", roomId)
-
     try {
       setChatUploadLoading(true)
-      const response = await apiConnector(
-        "POST",
-        `${getLiveLectureApiBase()}/chat-media`,
-        formData,
-        {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        }
-      )
+      const uploadRes = await uploadToCloudinary({
+        file,
+        folderType: "live-chat",
+        resourceType: "auto",
+        token,
+      })
 
-      const mediaUrl = response?.data?.data?.mediaUrl
-      const mediaType = response?.data?.data?.mediaType
+      const mediaUrl = uploadRes.secure_url
+      const mediaType = uploadRes.resource_type || "image"
       if (!mediaUrl) return
 
       const payload = {
